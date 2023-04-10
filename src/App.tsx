@@ -1,26 +1,44 @@
-import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { Route, Routes, useNavigate } from "react-router-dom";
+import { Security } from "@okta/okta-react";
+import { OktaAuth, toRelativeUrl } from "@okta/okta-auth-js";
+import { LandingPage } from "./pages/LandingPage";
+import { Header } from "./components/Header";
+import { Dashboard } from "./pages/Dashboard";
+import { LoginCallback } from '@okta/okta-react';
+import { RequiredAuth } from "./components/SecureRoute";
 
-function App() {
+const REDIRECT_URI = `${window.location.origin}${process.env.REACT_APP_CALLBACK_PATH}`;
+
+const config = {
+  issuer: process.env.REACT_APP_ISSUER,
+  clientId: process.env.REACT_APP_CLIENT_ID,
+  redirectUri: REDIRECT_URI,
+  scopes: ['openid', 'profile', 'email'],
+};
+
+const oktaAuth = new OktaAuth(config);
+
+const App = () => {
+  const navigate = useNavigate();
+  const restoreOriginalUri = (_oktaAuth : any,  originalUri : any) => {
+    const navigationUrl = toRelativeUrl(originalUri || '/', window.location.origin);
+    console.log(originalUri, "Original Uri", navigationUrl);
+    navigate(navigationUrl);
+  };
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <Security restoreOriginalUri={restoreOriginalUri} oktaAuth={oktaAuth}>
+      <Header />
+      <main>
+        <Routes>
+          <Route path="/" element={<LandingPage />} />
+          <Route path="login/callback"  element={<LoginCallback loadingElement={<div>Loading...</div>}/>} />
+          <Route path="/dashboard" element={<RequiredAuth/>}>
+            <Route path="" element={<Dashboard/>}/>
+          </Route>
+        </Routes>
+      </main>
+    </Security>
   );
-}
+};
 
 export default App;
